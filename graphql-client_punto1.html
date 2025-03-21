@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client GraphQL</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .main-content {
+            display: flex;
+            flex-direction: column;
+        }
+        .query-editor {
+            flex-grow: 1;
+            padding: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .response-viewer {
+            flex-grow: 1;
+            padding: 20px;
+            background-color: #fafafa;
+            overflow: auto;
+        }
+        h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            resize: vertical;
+        }
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-content">
+            <div class="query-editor">
+                <h3>Query</h3>
+                <textarea id="queryInput" placeholder="Inserisci la query GraphQL qui..."></textarea>
+                <button id="executeQuery">Esegui Query</button>
+            </div>
+            <div class="response-viewer">
+                <h3>Risposta</h3>
+                <pre id="responseOutput">La risposta apparirà qui...</pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Elementi DOM
+        const queryInput = document.getElementById('queryInput');
+        const responseOutput = document.getElementById('responseOutput');
+        const executeButton = document.getElementById('executeQuery');
+
+        // Server URL predefinito
+        const serverUrl = "http://localhost:5000/graphql";
+
+        // Esecuzione della query
+        executeButton.addEventListener('click', async () => {
+            const query = queryInput.value.trim();
+            if (!query) {
+                responseOutput.textContent = "Inserisci una query valida";
+                return;
+            }
+
+            responseOutput.textContent = "Inviando la richiesta...";
+
+            try {
+                const response = await fetch(serverUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query }),
+                });
+
+                const data = await response.json();
+                responseOutput.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                responseOutput.textContent = `Errore: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>
