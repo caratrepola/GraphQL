@@ -1,65 +1,43 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from ariadne import QueryType, make_executable_schema, graphql_sync
-import requests
-
-# Endpoint dell'API esterna
-API_ESTERNA = "https://external-app.com/api"
-
-
-# Funzioni
-def recupera_utente_per_id(id_utente):
-    response = requests.get(f"{API_ESTERNA}/users/{id_utente}")
-    if response.status_code == 200 and isinstance(response.json(), dict):
-        return response.json()
-    return None
+from models import Registrazione, User, Event
+from database import create_app, db
+import os
+from flask_cors import CORS
 
 
-def recupera_evento_per_id(id_evento):
-    response = requests.get(f"{API_ESTERNA}/events/{id_evento}")
-    if response.status_code == 200 and isinstance(response.json(), dict):
-        return response.json()
-    return None
+app = create_app()
+
+CORS(app)
 
 
-def recupera_tutti_eventi():
-    response = requests.get(f"{API_ESTERNA}/events")
-    if response.status_code == 200 and isinstance(response.json(), list):
-        return response.json()
-    return []
-
-
-def recupera_tutte_registrazioni():
-    response = requests.get(f"{API_ESTERNA}/registrations")
-    if response.status_code == 200 and isinstance(response.json(), list):
-        return response.json()
-    return []
-
-# Ariadne: Schema e Resolver
+# Definizione dello schema GraphQL
 type_defs = """
-    type Utente {
+    type User {
         id: Int
-        nome: String
+        name: String
         email: String
     }
 
-    type Evento {
+    type Event {
         id: Int
         titolo: String
+        descrizione: String 
         data: String
-        posizione: String
-        partecipanti: [Utente]
+        luogo: String
+        partecipanti: [User]
     }
 
     type Registrazione {
         id: Int
-        utente: Utente
-        evento: Evento
+        utente: User
+        evento: Event
     }
 
     type Query {
-        utente(id: Int!): Utente
-        eventi: [Evento]
-        evento(id: Int!): Evento
+        user(id: Int!): User
+        eventi: [Event]
+        evento(id: Int!): Event
         registrazioni: [Registrazione]
     }
 """
@@ -67,60 +45,53 @@ type_defs = """
 query = QueryType()
 
 
-# Resolver per la query `utente`
-@query.field("utente")
+@query.field("user")
 def resolver_utente(_, info, id):
-    dati_utente = recupera_utente_per_id(id)
-    if dati_utente:
-        return dati_utente
-    return None
+    return db.session.get(User, id)
 
 
-# Resolver per la query `eventi`
 @query.field("eventi")
 def resolver_eventi(_, info):
-    dati_eventi = recupera_tutti_eventi()
-    return dati_eventi
+    return db.session.query(Event).all()
 
 
-# Resolver per la query `evento`
 @query.field("evento")
 def resolver_evento(_, info, id):
-    dati_evento = recupera_evento_per_id(id)
-    if dati_evento:
-        if "partecipanti" in dati_evento:
-            dati_evento["partecipanti"] = [
-                recupera_utente_per_id(id_utente) for id_utente in dati_evento["partecipanti"]
-            ]
-        return dati_evento
+    evento = db.session.get(Event, id)
+    if evento:
+        return {
+            "id": evento.id,
+            "titolo": evento.titolo,
+            "descrizione": evento.descrizione,
+            "data": evento.data.isoformat() if evento.data else None,
+            "luogo": evento.luogo,
+            "partecipanti": [reg.user for reg in evento.registrazioni]
+        }
     return None
 
 
-# Resolver per la query `registrazioni`
 @query.field("registrazioni")
 def resolver_registrazioni(_, info):
-    dati_registrazioni = recupera_tutte_registrazioni()
-    #il cliclo serve per avere i dati piu completi altrimenti avrei solo tutti gli id
-    for registrazione in dati_registrazioni:
-        registrazione["utente"] = recupera_utente_per_id(registrazione["utente"])
-        registrazione["evento"] = recupera_evento_per_id(registrazione["evento"])
-    return dati_registrazioni
+    return db.session.query(Registrazione).all()
 
 
-# Creazione dello schema eseguibile
 schema = make_executable_schema(type_defs, query)
 
-# Flask
-app = Flask(__name__)
 
 
-@app.route("/graphql_punto_1", methods=["POST"])
+
+@app.route("/graphql", methods=["POST", "GET"])
 def graphql_server():
+    # Gestisci sia POST che GET
+    if request.method == "GET":
+        file_path = os.path.join(os.getcwd(), "graphql-client_punto1.html")
+        return send_file(file_path)  # Restituisce la pagina HTML
+
+    # Codice esistente per gestire POST
     data = request.get_json()
     success, result = graphql_sync(schema, data, context_value=request, debug=app.debug)
     status_code = 200 if success else 400
     return jsonify(result), status_code
-
 
 if __name__ == "__main__":
     app.run(debug=True)
