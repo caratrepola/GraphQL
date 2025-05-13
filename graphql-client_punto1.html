@@ -3,118 +3,356 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Client GraphQL</title>
+    <title>GraphQL Test Client</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
             max-width: 1200px;
             margin: 0 auto;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            overflow: hidden;
+            padding: 20px;
+            line-height: 1.6;
         }
-        .main-content {
+        h1, h2, h3 {
+            color: #333;
+        }
+        .container {
             display: flex;
             flex-direction: column;
+            gap: 20px;
         }
-        .query-editor {
-            flex-grow: 1;
-            padding: 20px;
-            border-bottom: 1px solid #ddd;
-        }
-        .response-viewer {
-            flex-grow: 1;
-            padding: 20px;
-            background-color: #fafafa;
-            overflow: auto;
-        }
-        h3 {
-            margin-top: 0;
-            color: #333;
+        .query-section {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            background-color: #f9f9f9;
         }
         button {
             background-color: #4CAF50;
             color: white;
             border: none;
             padding: 10px 15px;
-            border-radius: 4px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 10px 0;
             cursor: pointer;
-            font-size: 14px;
-            margin-top: 10px;
+            border-radius: 5px;
         }
         button:hover {
             background-color: #45a049;
         }
         textarea {
             width: 100%;
-            height: 200px;
+            height: 120px;
             padding: 10px;
+            border-radius: 5px;
             border: 1px solid #ddd;
-            border-radius: 4px;
             font-family: monospace;
-            resize: vertical;
         }
-        pre {
-            margin: 0;
+        input {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            margin-right: 10px;
+        }
+        .query-display {
             white-space: pre-wrap;
+            background-color: #f0f8ff;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #add8e6;
+            overflow-x: auto;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+        .response {
+            white-space: pre-wrap;
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            overflow-x: auto;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-radius: 5px 5px 0 0;
+        }
+        .tab.active {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-bottom: 1px solid #f9f9f9;
+            margin-bottom: -1px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="main-content">
-            <div class="query-editor">
-                <h3>Query</h3>
-                <textarea id="queryInput" placeholder="Inserisci la query GraphQL qui..."></textarea>
-                <button id="executeQuery">Esegui Query</button>
+    <h1>Client di Test GraphQL - Query</h1>
+
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('query')">Query Predefinite</div>
+        <div class="tab" onclick="switchTab('custom')">Query Personalizzata</div>
+    </div>
+
+    <div id="query-tab" class="container">
+        <div class="query-section">
+            <h2>1. Recupera dettagli utente per ID</h2>
+            <div>
+                <label for="userId">ID Utente:</label>
+                <input type="number" id="userId" value="1" min="1" oninput="updateUserQueryDisplay()">
+                <button onclick="executeUserQuery()">Esegui Query</button>
             </div>
-            <div class="response-viewer">
-                <h3>Risposta</h3>
-                <pre id="responseOutput">La risposta apparirà qui...</pre>
+            <h3>Query inviata:</h3>
+            <div class="query-display" id="userQueryDisplay">query {
+  user(id: 1) {
+    id
+    name
+    email
+  }
+}</div>
+            <h3>Risposta:</h3>
+            <div class="response" id="userResponse"></div>
+        </div>
+
+        <div class="query-section">
+            <h2>2. Recupera lista di tutti gli eventi</h2>
+            <button onclick="executeEventsQuery()">Esegui Query</button>
+            <h3>Query inviata:</h3>
+            <div class="query-display" id="eventsQueryDisplay">query {
+  eventi {
+    id
+    titolo
+    data
+    luogo
+  }
+}</div>
+            <h3>Risposta:</h3>
+            <div class="response" id="eventsResponse"></div>
+        </div>
+
+        <div class="query-section">
+            <h2>3. Recupera dettagli evento specifico con partecipanti</h2>
+            <div>
+                <label for="eventId">ID Evento:</label>
+                <input type="number" id="eventId" value="1" min="1" oninput="updateEventQueryDisplay()">
+                <button onclick="executeEventQuery()">Esegui Query</button>
             </div>
+            <h3>Query inviata:</h3>
+            <div class="query-display" id="eventQueryDisplay">query {
+  evento(id: 1) {
+    id
+    titolo
+    descrizione
+    data
+    luogo
+    partecipanti {
+      id
+      name
+      email
+    }
+  }
+}</div>
+            <h3>Risposta:</h3>
+            <div class="response" id="eventResponse"></div>
+        </div>
+
+        <div class="query-section">
+            <h2>4. Recupera lista di tutte le registrazioni</h2>
+            <button onclick="executeRegistrazioniQuery()">Esegui Query</button>
+            <h3>Query inviata:</h3>
+            <div class="query-display" id="registrazioniQueryDisplay">query {
+  registrazioni {
+    id
+    utente {
+      id
+      name
+      email
+    }
+    evento {
+      id
+      titolo
+      data
+    }
+  }
+}</div>
+            <h3>Risposta:</h3>
+            <div class="response" id="registrazioniResponse"></div>
+        </div>
+    </div>
+
+    <div id="custom-tab" class="container" style="display: none;">
+        <div class="query-section">
+            <h2>Query GraphQL Personalizzata</h2>
+            <textarea id="customQuery" placeholder="Inserisci qui la tua query GraphQL...">query {
+  user(id: 1) {
+    id
+    name
+    email
+  }
+}</textarea>
+            <button onclick="executeCustomQuery()">Esegui Query</button>
+            <h3>Risposta:</h3>
+            <div class="response" id="customResponse"></div>
         </div>
     </div>
 
     <script>
-        // Elementi DOM
-        const queryInput = document.getElementById('queryInput');
-        const responseOutput = document.getElementById('responseOutput');
-        const executeButton = document.getElementById('executeQuery');
-
-        // Server URL predefinito
-        const serverUrl = "http://localhost:5000/graphql";
-
-        // Esecuzione della query
-        executeButton.addEventListener('click', async () => {
-            const query = queryInput.value.trim();
-            if (!query) {
-                responseOutput.textContent = "Inserisci una query valida";
-                return;
+        // Funzione per switchare tra le tab
+        function switchTab(tabName) {
+            if (tabName === 'query') {
+                document.getElementById('query-tab').style.display = 'flex';
+                document.getElementById('custom-tab').style.display = 'none';
+                document.querySelectorAll('.tab')[0].classList.add('active');
+                document.querySelectorAll('.tab')[1].classList.remove('active');
+            } else {
+                document.getElementById('query-tab').style.display = 'none';
+                document.getElementById('custom-tab').style.display = 'flex';
+                document.querySelectorAll('.tab')[0].classList.remove('active');
+                document.querySelectorAll('.tab')[1].classList.add('active');
             }
+        }
 
-            responseOutput.textContent = "Inviando la richiesta...";
+        // Aggiorna la visualizzazione della query utente quando l'ID cambia
+        function updateUserQueryDisplay() {
+            const userId = document.getElementById('userId').value;
+            const queryDisplay = `query {
+  user(id: ${userId}) {
+    id
+    name
+    email
+  }
+}`;
+            document.getElementById('userQueryDisplay').textContent = queryDisplay;
+        }
 
-            try {
-                const response = await fetch(serverUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ query }),
-                });
+        // Aggiorna la visualizzazione della query evento quando l'ID cambia
+        function updateEventQueryDisplay() {
+            const eventId = document.getElementById('eventId').value;
+            const queryDisplay = `query {
+  evento(id: ${eventId}) {
+    id
+    titolo
+    descrizione
+    data
+    luogo
+    partecipanti {
+      id
+      name
+      email
+    }
+  }
+}`;
+            document.getElementById('eventQueryDisplay').textContent = queryDisplay;
+        }
 
-                const data = await response.json();
-                responseOutput.textContent = JSON.stringify(data, null, 2);
-            } catch (error) {
-                responseOutput.textContent = `Errore: ${error.message}`;
-            }
-        });
+        // Query per ottenere un utente specifico
+        function executeUserQuery() {
+            const userId = document.getElementById('userId').value;
+            const query = `query {
+  user(id: ${userId}) {
+    id
+    name
+    email
+  }
+}`;
+
+            executeGraphQLQuery(query, 'userResponse');
+        }
+
+        // Query per ottenere tutti gli eventi
+        function executeEventsQuery() {
+            const query = `query {
+  eventi {
+    id
+    titolo
+    data
+    luogo
+  }
+}`;
+
+            executeGraphQLQuery(query, 'eventsResponse');
+        }
+
+        // Query per ottenere un evento specifico con i partecipanti
+        function executeEventQuery() {
+            const eventId = document.getElementById('eventId').value;
+            const query = `query {
+  evento(id: ${eventId}) {
+    id
+    titolo
+    descrizione
+    data
+    luogo
+    partecipanti {
+      id
+      name
+      email
+    }
+  }
+}`;
+
+            executeGraphQLQuery(query, 'eventResponse');
+        }
+
+        // Query per ottenere tutte le registrazioni
+        function executeRegistrazioniQuery() {
+            const query = `query {
+  registrazioni {
+    id
+    utente {
+      id
+      name
+      email
+    }
+    evento {
+      id
+      titolo
+      data
+    }
+  }
+}`;
+
+            executeGraphQLQuery(query, 'registrazioniResponse');
+        }
+
+        // Esecuzione di query personalizzata
+        function executeCustomQuery() {
+            const query = document.getElementById('customQuery').value;
+            executeGraphQLQuery(query, 'customResponse');
+        }
+
+        // Funzione per eseguire una query GraphQL
+        function executeGraphQLQuery(query, responseElementId) {
+            const responseElement = document.getElementById(responseElementId);
+            responseElement.textContent = "Caricamento in corso...";
+
+            fetch('/graphqlQuery', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    query: query
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                responseElement.textContent = JSON.stringify(data, null, 2);
+            })
+            .catch(error => {
+                responseElement.textContent = "Errore: " + error;
+            });
+        }
     </script>
 </body>
 </html>
