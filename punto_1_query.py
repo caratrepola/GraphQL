@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, send_file
-from ariadne import QueryType, make_executable_schema, graphql_sync
+from ariadne import QueryType, make_executable_schema, graphql_sync, ObjectType
 from models import Registrazione, User, Event
 from database import create_app, db
 import os
@@ -42,45 +42,106 @@ type_defs = """
     }
 """
 
+# Inizializzazione dell'oggetto che contiene i resolver delle query
 query = QueryType()
 
 
+# Resolver per ottenere un singolo utente tramite ID
 @query.field("user")
 def resolver_utente(_, info, id):
-    return db.session.get(User, id)
+   # return db.session.get(User, id)
+   user = db.session.get(User, id)
+   if not user:
+       return {
+           "id": id,
+           "name": "Utente non trovato",
+           "email": ""
+       }
+   return user
 
-
+# Resolver per ottenere tutti gli eventi
 @query.field("eventi")
 def resolver_eventi(_, info):
-    return db.session.query(Event).all()
+    eventi = db.session.query(Event).all()
+    if not eventi:
+        return [{
+            "id": 0,
+            "titolo": "Nessun evento disponibile",
+            "descrizione": "",
+            "data": "",
+            "luogo": "",
+            "partecipanti": []
+        }]
+    return eventi
 
 
+# Resolver per ottenere un evento specifico con partecipanti
 @query.field("evento")
 def resolver_evento(_, info, id):
     evento = db.session.get(Event, id)
     if evento:
-        return {
-            "id": evento.id,
-            "titolo": evento.titolo,
-            "descrizione": evento.descrizione,
-            "data": evento.data.isoformat() if evento.data else None,
-            "luogo": evento.luogo,
-            "partecipanti": [reg.user for reg in evento.registrazioni]
-        }
-    return None
+        return evento
+
+    return{
+        "id": id,
+        "titolo": "Evento non trovato",
+        "descrizione": "",
+        "data": "",
+        "luogo": "",
+        "partecipanti": []
+    }
 
 
+
+# Resolver per ottenere tutte le registrazioni
 @query.field("registrazioni")
 def resolver_registrazioni(_, info):
-    return db.session.query(Registrazione).all()
+   # return db.session.query(Registrazione).all()
+   registrazioni = db.session.query(Registrazione).all()
+   if not registrazioni:
+       # Oggetto fittizio per comunicare che non ci sono registrazioni
+       return [{
+           "id": 0,
+           "utente": {
+               "id": 0,
+               "name": "Nessuna registrazione trovata",
+               "email": ""
+           },
+           "evento": {
+               "id": 0,
+               "titolo": "",
+               "descrizione": "",
+               "data": "",
+               "luogo": "",
+               "partecipanti": []
+           }
+       }]
+   return registrazioni
 
+# Creazione di un ObjectType per gestire i campi personalizzati del tipo Registrazione
+registrazione_type = ObjectType("Registrazione")
 
-schema = make_executable_schema(type_defs, query)
+event_type = ObjectType("Event")
 
+# Resolver per il campo "utente" di una registrazione
+@registrazione_type.field("utente")
+def resolve_registrazione_utente(obj, *_):
+    return db.session.get(User, obj.user_id)
 
+# Resolver per il campo "evento" di una registrazione
+@registrazione_type.field("evento")
+def resolve_registrazione_evento(obj, *_):
+    return db.session.get(Event, obj.event_id)
 
+@event_type.field("partecipanti")
+def resolve_event_partecipanti(obj, *_):
+    return [reg.user for reg in obj.registrazioni]
 
-@app.route("/graphql", methods=["POST", "GET"])
+# Costruzione dello schema GraphQL
+schema = make_executable_schema(type_defs, query, registrazione_type, event_type)
+
+# Definizione della rotta
+@app.route("/graphqlQuery", methods=["POST", "GET"])
 def graphql_server():
     # Gestisci sia POST che GET
     if request.method == "GET":
